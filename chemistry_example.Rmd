@@ -1,0 +1,65 @@
+---
+title: "Chemistry Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+library(readr)
+library(tidyr)
+library(dplyr)
+```
+
+# Introduction
+
+Data were downloaded from a project archived on the Arctic Data Center: [North Pole Environmental Observatory Bottle Chemistry](https://arcticdata.io/catalog/view/doi:10.18739/A25T3FZ8X). The specific data file downloaded was BGchem2008data.csv.
+
+* read in data
+
+```{r read data, message=FALSE, warning=FALSE}
+
+bg_chem <- read_csv("BGchem2008data.csv")
+
+```
+
+
+# Analysis
+
+* calculate summary stats
+
+```{r mean temp}
+mean_temp <- mean(bg_chem$CTD_Temperature)
+mean_temp
+```
+The mean temperature was `r round(mean_temp, 2)`.
+
+
+
+```{r plot1}
+
+plot(bg_chem$CTD_Depth, bg_chem$CTD_Salinity)
+
+```
+
+
+* calculate mean Redfield ratio
+
+```{r redfield ratio}
+
+bg_chem <- bg_chem %>% 
+  mutate(total_n = NO3 + NO2 + NH4,
+         ratio = total_n/P)
+
+```
+
+
+
+* plot Redfield ratio
+
+```{r}
+
+plot(bg_chem$ratio)
+
+```
+

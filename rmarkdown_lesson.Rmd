@@ -1,0 +1,41 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This is a very *important* introduction.
+
+
+
+## Project Objectives
+
+Three objectives:
+
+1. map
+1. select sites
+1. get data
+1. analyze
+1. map
+
+# Methods
+
+```{r chunk1}
+
+x <- 4*3
+x
+
+```
+
+```{r}
+data(cars)
+summary(cars)
+with(cars, plot(speed, dist))
+```
+
+
