@@ -7,3 +7,4 @@ This is a second training repo for ADC training. In this one, we have data to pr
 
 We will be using this for the next training on collaboration in git.
 
+Connor Was Here.
