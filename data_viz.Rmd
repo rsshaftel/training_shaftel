@@ -1,0 +1,112 @@
+---
+title: "Data Visualization"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(leaflet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+#add interactive data tables to rendered rmarkdown
+library(DT)
+library(scales) # install.packages("scales")
+```
+
+
+
+```{r}
+data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3Af119a05b-bbe7-4aea-93c6-85434dcb1c5e"
+
+esc <- tryCatch(
+    read.csv("data/escapement.csv", stringsAsFactors = FALSE),
+    error=function(cond) {
+        message(paste("Escapement file does not seem to exist, so get it from the KNB."))
+        esc <- read.csv(url(data_url, method = "libcurl"), stringsAsFactors = FALSE)
+        return(esc)
+    }
+)
+
+head(esc)
+```
+
+Jeanette's code.
+
+```{r}
+annual_esc <- esc %>% 
+  separate(sampleDate, into = c("year", "month", "day"), sep = "-") %>% 
+  mutate(year = as.numeric(year)) %>% 
+  group_by(SASAP.Region, Species, year) %>% 
+  summarize(annual_total = sum(DailyCount)) 
+
+head(annual_esc)
+```
+
+
+
+Get annual summaries by region and species first.
+
+```{r}
+library(lubridate)
+
+esc_summ <- esc %>%
+  mutate(date = as.Date(sampleDate, format = "%Y-%m-%d"),
+         year = year(date)) %>% 
+  group_by(SASAP.Region, Species, year) %>% 
+  summarize(annual_total = sum(DailyCount)) 
+
+head(esc_summ)
+```
+
+Plot by region and species. 
+
+```{r}
+esc_summ %>% 
+  ggplot(aes(x = year, y = annual_total, color = SASAP.Region)) +
+  geom_point() +
+  facet_wrap(~Species, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+Chinook only.
+
+```{r}
+esc_summ %>%
+  filter(Species == "Chinook") %>% 
+  ggplot(aes(x = year, y = annual_total, color = SASAP.Region)) +
+  geom_line() +
+  facet_wrap(~Species, scales = "free_y") +
+  scale_y_log10() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+Sockeye.
+
+```{r}
+esc_summ %>%
+  filter(Species == "Sockeye") %>% 
+  ggplot(aes(x = year, y = annual_total, color = SASAP.Region)) +
+  geom_line() +
+  facet_wrap(~Species, scales = "free_y") +
+  scale_y_log10() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+Salmon species only.
+
+```{r}
+esc_summ %>%
+  filter(Species %in% c("Chinook", "Coho", "Sockeye", "Chum", "Pink", "Late Run Sockeye")) %>% 
+  ggplot(aes(x = year, y = annual_total, color = SASAP.Region)) +
+  geom_line() +
+  facet_wrap(~Species, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
