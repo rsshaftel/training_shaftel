@@ -4,7 +4,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```
 
 ```{r}
@@ -36,7 +36,7 @@ head(esc)
 
 Jeanette's code.
 
-```{r}
+```{r eval = FALSE}
 annual_esc <- esc %>% 
   separate(sampleDate, into = c("year", "month", "day"), sep = "-") %>% 
   mutate(year = as.numeric(year)) %>% 
@@ -59,7 +59,7 @@ esc_summ <- esc %>%
   group_by(SASAP.Region, Species, year) %>% 
   summarize(annual_total = sum(DailyCount)) 
 
-head(esc_summ)
+# head(esc_summ)
 ```
 
 Plot by region and species. 
@@ -108,5 +108,51 @@ esc_summ %>%
   facet_wrap(~Species, scales = "free_y") +
   theme_bw() +
   theme(legend.position = "bottom")
+```
+
+Trying out interactive tables with dt.
+
+```{r}
+locations <- esc %>% 
+  distinct(SASAP.Region, Location, Latitude, Longitude) %>% 
+  select(SASAP.Region, Location, Latitude, Longitude) %>% 
+  arrange(SASAP.Region, Location)
+
+# #no locs for SE...
+# locations %>% 
+#   filter(is.na(Latitude))
+
+locations <- locations %>% 
+  filter(!is.na(Latitude))
+
+datatable(locations)
+```
+Try out a leaflet map.
+
+```{r}
+leaflet(locations) %>% 
+  addTiles() %>% 
+  addMarkers(lng = ~Longitude, lat = ~Latitude, popup = ~ Location)
+```
+
+Another map example.
+
+```{r}
+leaflet(locations) %>% 
+  addWMSTiles("https://www.gebco.net/data_and_products/gebco_web_services/web_map_service/mapserv?",
+              layers = 'GEBCO_LATEST',
+              attribution = "Imagery reproduced from the GEBCO_2014 Grid, version 20150318, www.gebco.net") %>% 
+   addCircleMarkers(lng = ~Longitude,
+                   lat = ~Latitude,
+                   popup = ~ Location,
+                   radius = 5,
+                   # set fill properties
+                   fillColor = "salmon",
+                   fillOpacity = 1,
+                   # set stroke properties
+                   stroke = T,
+                   weight = 0.5,
+                   color = "white",
+                   opacity = 1)
 ```
 
