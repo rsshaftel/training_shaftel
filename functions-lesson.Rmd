@@ -7,3 +7,65 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+# Example without using a function
+
+
+```{r}
+airtemps <- c(212, 30.3, 78, 32)
+celsius1 <- (airtemps[1] - 32)*5/9
+celsius2 <- (airtemps[2] - 32)*5/9
+celsius3 <- (airtemps[3] - 32)*5/9
+
+(airtemps - 32)*5/9
+
+```
+
+# Create a function
+
+Because of function scoping, there is a new celsius variable within the function called celsius that can have a different value. Because it is inside the function, it is not visible outside the function. 
+
+```{r}
+
+fahr_to_celsius <- function(fahr) {
+  celsius <- (fahr - 32)*5/9
+  return(celsius)
+}
+
+```
+
+
+```{r}
+celsius <- fahr_to_celsius(airtemps[1])
+celsius
+celsius1 == celsius
+
+```
+
+```{r}
+celsius <- fahr_to_celsius(airtemps)
+celsius
+```
+
+# My turn to create a function
+
+```{r}
+celsius_to_fahr <- function(celsius){
+  fahr <- (celsius * 9/5) + 32
+  return(fahr)
+}
+```
+
+```{r}
+fahr <- celsius_to_fahr(celsius)
+fahr
+
+fahr == airtemps
+```
+
+
+# Test the function
+
+
+
+# Document the function
