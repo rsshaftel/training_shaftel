@@ -1,0 +1,26 @@
+---
+title: "spatial_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(sf)
+library(dplyr)
+library(ggplot2)
+library(leaflet)
+library(scales)
+library(ggmap)
+
+```
+
+
+```{r}
+ak_regions <- read_sf("shapefiles/ak_regions_simp.shp")
+
+plot(ak_regions)
+```
+

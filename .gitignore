@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+shapefiles
+Utqiagvik_nest_data.csv
+Utqiagvik_predator_surveys.csv
+species_codes_to_common_table.csv
