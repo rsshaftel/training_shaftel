@@ -22,5 +22,168 @@ library(ggmap)
 ak_regions <- read_sf("shapefiles/ak_regions_simp.shp")
 
 plot(ak_regions)
+head(ak_regions)
+ak_regions
+
+st_crs(ak_regions)
 ```
+
+Reproject to albers. 
+
+```{r}
+ak_regions_3338 <- ak_regions %>%
+  st_transform(crs = 3338)
+
+plot(ak_regions_3338, graticule = TRUE)
+
+ak_regions_3338 %>% 
+  select(region) %>% 
+  filter(region == "Cook Inlet") %>% 
+  plot() 
+```
+
+Read in population information and convert to an sf object - points since lat/long for each city.
+
+```{r}
+ak_pop <- read.csv("shapefiles/alaska_population.csv") 
+
+#convert to sf, set at wgs84, and keep lat/long columns
+ak_pop_4326 <- st_as_sf(ak_pop, coords = c("lng", "lat"), crs = 4326, remove = FALSE)
+
+ak_pop_4326
+
+```
+
+Convert point data to albers.
+
+```{r}
+ak_pop_3338 <- ak_pop_4326 %>% 
+  st_transform(crs = 3338)
+```
+
+Spatial join between points and polygons. Adding the region information to each point. That way, we can sum the total population within regions and then add that information to the regions for coloring them.
+
+```{r}
+pop_joined <- st_join(ak_pop_3338, ak_regions_3338, join = st_within)
+
+class(pop_joined)
+
+pop_joined %>% 
+  select(region) %>% 
+  plot()
+```
+
+Sum the total population by each region. We don't need the geometry anymore because we just need the summary information to link to the polygons.
+
+```{r}
+#.groups = "drop" equivalent to ungroup()
+pop_region <- pop_joined %>% 
+  st_drop_geometry() %>% 
+  group_by(region) %>% 
+  summarize(total_pop = sum(population), .groups = "drop")
+
+pop_region 
+```
+
+Join the total population for each region to the ak_regions polygon sf.
+
+```{r}
+ak_regions_3338_wpop <- left_join(ak_regions_3338, pop_region)
+
+class(ak_regions_3338_wpop)
+
+ak_regions_3338_wpop %>% 
+  select(total_pop) %>% 
+  plot(graticule = TRUE)
+```
+
+Example of grouping and summarizing on spatial areas - e.g. mgmt areas.
+
+```{r}
+#note do_union = FALSE calculates the total population by mgmt area, but doesn't actually union/dissolve the regions.
+mgmt_3338_wpop <- ak_regions_3338_wpop %>% 
+  group_by(mgmt_area) %>% 
+  summarize(mgmt_pop = sum(total_pop), do_union = FALSE)
+
+
+mgmt_3338_wpop %>% 
+  select(mgmt_pop) %>% 
+  plot()
+```
+
+Let's improve the map from before by changing the color ramp and adding cities and rivers. Moving to ggplot.
+
+Read in rivers.
+
+```{r}
+rivers <- read_sf("shapefiles/ak_rivers_simp.shp")
+
+st_crs(rivers)
+```
+
+Add layers to the map.
+
+```{r}
+ggplot() +
+  geom_sf(data = ak_regions_3338_wpop, aes(fill = total_pop)) +
+  geom_sf(data = rivers, color = "black", aes(size = StrOrder)) +
+  geom_sf(data = ak_pop_3338, size = 0.5) +
+  scale_fill_continuous(low = "khaki", high = "firebrick", labels = comma) +
+  scale_size(range = c(0.01, 0.3), guide = FALSE) +
+  labs(fill = "Total Population") +
+  theme_bw() 
+  theme(legend.position = "bottom")
+
+```
+Adding a base map... topography!
+
+```{r}
+pop_3857 <- ak_pop_3338 %>%
+  st_transform(crs = 3857)
+```
+
+Function to fix a problem...
+
+```{r}
+# Define a function to fix the bbox to be in EPSG:3857
+# See https://github.com/dkahle/ggmap/issues/160#issuecomment-397055208
+ggmap_bbox_to_3857 <- function(map) {
+  if (!inherits(map, "ggmap")) stop("map must be a ggmap object")
+  # Extract the bounding box (in lat/lon) from the ggmap to a numeric vector, 
+  # and set the names to what sf::st_bbox expects:
+  map_bbox <- setNames(unlist(attr(map, "bb")), 
+                       c("ymin", "xmin", "ymax", "xmax"))
+  
+  # Coonvert the bbox to an sf polygon, transform it to 3857, 
+  # and convert back to a bbox (convoluted, but it works)
+  bbox_3857 <- st_bbox(st_transform(st_as_sfc(st_bbox(map_bbox, crs = 4326)), 3857))
+  
+  # Overwrite the bbox of the ggmap object with the transformed coordinates 
+  attr(map, "bb")$ll.lat <- bbox_3857["ymin"]
+  attr(map, "bb")$ll.lon <- bbox_3857["xmin"]
+  attr(map, "bb")$ur.lat <- bbox_3857["ymax"]
+  attr(map, "bb")$ur.lon <- bbox_3857["xmax"]
+  map
+}
+```
+
+Get stamen map tile that fits in a predefined bounding box.
+
+```{r}
+bbox <- c(-170, 52, -130, 64)   # This is roughly southern Alaska
+ak_map <- get_stamenmap(bbox, zoom = 4)
+ak_map_3857 <- ggmap_bbox_to_3857(ak_map)
+```
+
+Plot the map tile with cities colored by their populations on top.
+
+```{r}
+#inherit.aes = F - don't inherit the mapping aesthetics from the ggmap call.
+
+ggmap(ak_map_3857) + 
+  geom_sf(data = pop_3857, aes(color = population), inherit.aes = F, size = 0.5) +
+  scale_color_continuous(low = "khaki", high =  "firebrick", labels = comma) +
+  theme(axis.title = element_blank())
+```
+
 
