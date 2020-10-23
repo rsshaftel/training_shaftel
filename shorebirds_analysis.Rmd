@@ -1,0 +1,218 @@
+---
+title: "shorebirds_analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rvest)
+library(readr)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+library(tidyverse)
+```
+# Load species table
+
+```{r}
+webpage <- read_html("https://www.pwrc.usgs.gov/bbl/manual/speclist.cfm")
+
+tbls <- html_nodes(webpage, "table") %>% 
+    html_table(fill = TRUE)
+
+species <- tbls[[1]] %>% 
+    clean_names() %>% 
+    select(alpha_code, common_name) %>% 
+    mutate(alpha_code = tolower(alpha_code))
+
+
+webpage
+
+tbls
+
+species
+
+write_csv(species, "species_codes_to_common_table.csv")
+```
+
+
+# Read in data files
+
+
+```{r}
+nest_dat <- read_csv("Utqiagvik_nest_data.csv")
+
+pred_dat <- read_csv("Utqiagvik_predator_surveys.csv")
+
+nest_dat
+
+pred_dat
+
+species %>% 
+  arrange(alpha_code)
+
+```
+
+
+# Function that converts species codes to common names
+
+```{r}
+nest2 <- spp_to_common(nest_dat, species)
+
+names(nest2)
+
+nest2 %>% distinct(species, common_name)
+
+pred2 <- spp_to_common(pred_dat, species)
+
+names(pred2)
+
+pred2 %>% distinct(species, common_name)
+```
+
+
+# Calculate total number of predators
+
+```{r}
+names(pred2)
+
+summary(pred2)
+
+pred_summ <- pred2 %>% 
+  filter(!is.na(count)) %>% 
+  group_by(common_name, year) %>% 
+  summarize(pred_total = sum(count))
+
+```
+
+```{r}
+pred_summ
+
+pred_summ %>% 
+  ggplot(aes(x = ann_total, y = fct_reorder(common_name, pred_total), 
+             color = as.factor(year))) +
+  geom_point()
+
+pred_summ %>% 
+  ggplot(aes(x = year, y = pred_total, color = common_name)) +
+  geom_point() +
+  geom_line()
+
+pred_summ %>% 
+  ggplot(aes(x = year, y = pred_total)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~common_name)
+
+summary(pred_summ)
+```
+
+
+# Calculate total number of eggs predated by year and spp
+
+```{r}
+names(nest2)
+
+summary(nest2$number_eggs_predated)
+
+nest2 %>% distinct(species, common_name)
+
+nest_summ <- nest2 %>% 
+  group_by(species, common_name, year) %>% 
+  summarize(eggs_pred_total = sum(number_eggs_predated))
+
+nest_summ <- nest_summ %>% 
+  mutate(common_name2 = case_when(is.na(common_name) ~ species, 
+                                  TRUE ~ common_name))
+
+nest_summ %>% distinct(species, common_name2)
+```
+
+
+```{r}
+nest_summ %>% 
+  ggplot(aes(x = year, y = eggs_pred_total, color = common_name)) +
+  geom_point() +
+  geom_line()
+
+nest_summ %>% 
+  ggplot(aes(x = year, y = eggs_pred_total)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~common_name)
+
+```
+
+# Plot relationship between predators and egg predation
+
+```{r}
+
+pred_summ %>% distinct(common_name)
+nest_summ %>% distinct(common_name)
+
+pred_total <- pred_summ %>% 
+  filter(!is.na(pred_total)) %>% 
+  group_by(year) %>% 
+  summarize(all_pred_total = sum(pred_total))
+
+pred_egg_summ_byspp <- full_join(pred_total, nest_summ)
+
+```
+
+```{r}
+pred_egg_summ_byspp %>% 
+  ggplot(aes(x = all_pred_total, y = eggs_pred_total)) +
+  geom_point() +
+  facet_wrap(~common_name, scales = "free")
+
+```
+
+```{r}
+egg_total <- nest_summ %>% 
+  group_by(year) %>% 
+  summarize(egg_total = sum(eggs_pred_total))
+
+pred_egg_summ <- full_join(pred_total, egg_total)
+
+pred_egg_summ
+```
+
+```{r}
+
+pred_egg_summ %>% 
+  ggplot() +
+  geom_point(aes(x = year, y = all_pred_total)) +
+  geom_line(aes(x = year, y = all_pred_total)) +
+  geom_point(aes(x = year, y = egg_total), color = "red") +
+  geom_line(aes(x = year, y = egg_total), color = "red") +
+  labs(y = "Count")
+```
+
+```{r}
+pred_egg_summ %>% 
+  pivot_longer(names_to = "Variable", values_to = "value", -year) %>% 
+  mutate(var_name = case_when(Variable == "all_pred_total" ~ "Total Predators",
+                              Variable == "egg_total" ~ "Total Predated Eggs")) %>% 
+  ggplot(aes(x = year, y = value, color = var_name)) +
+  geom_point() +
+  geom_line() +
+  labs(y = "Count") +
+  theme_bw() +
+  theme(legend.position = "bottom", legend.title = element_blank())
+```
+
+
+
+```{r}
+pred_egg_summ %>% 
+  ggplot(aes(x = all_pred_total, y = egg_total)) +
+  geom_point() +
+  theme_bw() +
+  labs(x = "Total Predators", y = "Total Predated Eggs")
+
+```
+
+

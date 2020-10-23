@@ -7,6 +7,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Roxygen provides functions for parsing documentation commands.
+
+```{r}
+library(roxygen2)
+```
 
 # Example without using a function
 
@@ -34,6 +39,7 @@ fahr_to_celsius <- function(fahr) {
 
 ```
 
+# Test the function
 
 ```{r}
 celsius <- fahr_to_celsius(airtemps[1])
@@ -50,6 +56,13 @@ celsius
 # My turn to create a function
 
 ```{r}
+#' Converts Celsius to Fahrenheit
+#' 
+#' This function takes scalar or vector values in degress Celsius
+#' and returns values in degrees Fahrenheit
+#'
+#' @param celsius the input temperature in degrees Celsius
+
 celsius_to_fahr <- function(celsius){
   fahr <- (celsius * 9/5) + 32
   return(fahr)
@@ -63,8 +76,6 @@ fahr
 fahr == airtemps
 ```
 
-
-# Test the function
 
 
 
